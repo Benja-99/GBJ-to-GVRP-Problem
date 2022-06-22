@@ -57,10 +57,10 @@ bool aun_quedan_customers_sin_visitar(vector<node> &route, vector<node> &vector_
     {
         if (!existeEnVector(nodos_visitados, route[i].id_interno))
         {
-            if (route[i].tipo == "c")
-            {
-                nodos_visitados.push_back(route[i].id_interno);
-            }
+            // if (route[i].tipo == "c")
+            // {
+            nodos_visitados.push_back(route[i].id_interno);
+            // }
         }
     }
     for (auto i_nodo : nodos_visitados)
@@ -363,7 +363,7 @@ int main()
         double time = (double(t1 - t0) / CLOCKS_PER_SEC);
         id++;
         // if (!aun_quedan_customers_sin_visitar(route, vector_nodos, num_customers, nodos_utilizados))
-        if (!aun_quedan_customers_sin_visitar(route, vector_nodos, num_customers, nodos_utilizados))
+        if (!aun_quedan_customers_sin_visitar(route, vector_nodos, total_nodos, nodos_utilizados))
         {
             flag_nodos_visitados = false;
         }
