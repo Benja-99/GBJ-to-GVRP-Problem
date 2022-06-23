@@ -313,7 +313,6 @@ int main()
 
     vector<node> nodes_customer = create_nodes(archivo_leido, num_customers, id_nodos + 21);
     int total_nodos = num_afs - 1 + num_customers;
-    cout << num_customers << endl;
     vector<node> vector_nodos;
     vector_nodos.push_back(node_depot);
 
