@@ -101,7 +101,7 @@ void busqueda(int solucion[], double calidad, int nivel, Nodo *N, int visitados,
         { // explorando ramas
             distancia = Distancia_Haversine(N[solucion[nivel - 1]].longitude, N[solucion[nivel - 1]].latitude, N[candidato].longitude, N[candidato].latitude);
             distancia2 = Distancia_Haversine(N[candidato].longitude, N[candidato].latitude, N[0].longitude, N[0].latitude);
-            printf("distancia %f\n", distancia2);
+            // printf("distancia %f\n", distancia2);
             if (N[candidato].tipoNodo == 'c')
                 p = tiempo + distancia / speed + servicetime + distancia2 / speed;
             else

@@ -229,116 +229,66 @@ Input:
 Output:
 La funcion no tiene retorno, se trabaja con las direcciones de memoria
  */
-void gbj(vector<node> &vector_nodos, vector<node> &solucion, int nivel_actual, float max_time, float max_distance, float speed, float service_time, float refuel_time, int &nivel_mayor_distancia, vector<double> distancias_nodo_actual_anterior, vector<int> tiempos_actuales, vector<double> fueles_actuales, bool &busqueda_terminada)
+void gbj(vector<node> &vector_nodos, vector<node> &solucion, int nivel_actual, float max_time, float max_distance, float speed, float service_time, float refuel_time, int &nivel_mayor_distancia, vector<double> &distancias_nodo_actual_anterior, vector<int> &tiempos_actuales, vector<double> &fueles_actuales, bool &busqueda_terminada)
 {
-
-    printf("NIVEL ACTUAL %d - FUEL ACTUAL %f - TIEMPO ACTUAL %d\n", nivel_actual, fueles_actuales[nivel_actual - 1], tiempos_actuales[nivel_actual - 1]);
-    if (busqueda_terminada)
-    {
-        return;
-    }
+    // printf("NIVEL ACTUAL %d - FUEL ACTUAL %f - TIEMPO ACTUAL %d\n", nivel_actual, fueles_actuales[nivel_actual - 1], tiempos_actuales[nivel_actual - 1]);
 
     int aux_time, aux_fuel, aux_dist, i_candidato;
-    node node_candidato, node_vacio;
-    vector_nodos[0].en_solucion = true;
-    if (tiempos_actuales[nivel_actual - 1] < max_time / 2)
+
+    node node_vacio, node_candidato;
+
+    for (i_candidato = vector_nodos.size(); i_candidato > 0; i_candidato--)
     {
-        cout << "WEA\n";
-        for (i_candidato = vector_nodos.size(); i_candidato > 0; i_candidato--)
+        node_candidato = vector_nodos[i_candidato];
+        double distancia_entre_nodo_nuevo_y_anterior = haversine(node_candidato.latitude, node_candidato.longitude, solucion[nivel_actual - 1].latitude, solucion[nivel_actual - 1].longitude);
+        if (node_candidato.tipo == "c")
         {
-            node_candidato = vector_nodos[i_candidato];
-            double distancia_entre_nodo_nuevo_y_anterior = haversine(node_candidato.latitude, node_candidato.longitude, solucion[nivel_actual - 1].latitude, solucion[nivel_actual - 1].longitude);
-            if (node_candidato.tipo == "c")
-            {
-                aux_time = tiempos_actuales[nivel_actual - 1] + service_time + (distancia_entre_nodo_nuevo_y_anterior / speed);
-                aux_fuel = fueles_actuales[nivel_actual - 1] - distancia_entre_nodo_nuevo_y_anterior;
-            }
-            else
-            {
-                aux_time = tiempos_actuales[nivel_actual - 1] + refuel_time + (distancia_entre_nodo_nuevo_y_anterior / speed);
-                aux_fuel = max_distance;
-            }
-            aux_dist = distancias_nodo_actual_anterior[nivel_actual - 1] + distancia_entre_nodo_nuevo_y_anterior;
+            aux_time = tiempos_actuales[nivel_actual - 1] + service_time + (distancia_entre_nodo_nuevo_y_anterior / speed);
+            aux_fuel = fueles_actuales[nivel_actual - 1] - distancia_entre_nodo_nuevo_y_anterior;
+        }
+        else
+        {
+            aux_time = tiempos_actuales[nivel_actual - 1] + refuel_time + (distancia_entre_nodo_nuevo_y_anterior / speed);
+            aux_fuel = max_distance;
+        }
+        aux_dist = distancias_nodo_actual_anterior[nivel_actual - 1] + distancia_entre_nodo_nuevo_y_anterior;
 
-            if (aux_fuel > 0 && aux_time <= max_time && !node_candidato.en_solucion)
-            {
-                tiempos_actuales[nivel_actual] = aux_time;
+        if (aux_fuel > 0 && aux_time <= max_time && !node_candidato.en_solucion)
+        {
+            tiempos_actuales[nivel_actual] = aux_time;
 
-                distancias_nodo_actual_anterior[nivel_actual] = distancia_entre_nodo_nuevo_y_anterior;
-                fueles_actuales[nivel_actual] = aux_fuel;
-                node_candidato.en_solucion = true;
-                solucion[nivel_actual] = node_candidato;
-                vector_nodos[node_candidato.id_interno].en_solucion = true;
-                if (solucion[nivel_actual].id_interno == 0)
-                {
-                    busqueda_terminada = true;
-                    return;
-                }
-                gbj(vector_nodos, solucion, nivel_actual + 1, max_time, max_distance, speed, service_time, refuel_time, nivel_mayor_distancia, distancias_nodo_actual_anterior, tiempos_actuales, fueles_actuales, busqueda_terminada);
-                node_candidato.en_solucion = false;
-                vector_nodos[node_candidato.id_interno].en_solucion = false;
-                distancias_nodo_actual_anterior[nivel_actual] = 0;
-                fueles_actuales[nivel_actual] = 0;
-                solucion[nivel_actual] = node_vacio;
-                if (nivel_actual > nivel_mayor_distancia)
-                {
-                    return;
-                }
+            distancias_nodo_actual_anterior[nivel_actual] = distancia_entre_nodo_nuevo_y_anterior;
+            fueles_actuales[nivel_actual] = aux_fuel;
+            node_candidato.en_solucion = true;
+            solucion[nivel_actual] = node_candidato;
+            vector_nodos[node_candidato.id_interno].en_solucion = true;
+            // printf("NIVEL %d - AGREGADO ID: %d - DISTANCIA ENTRE NODOS[ANTERIOR-%d][ACTUAL-%d]: %f - FUEL ACTUAL: %f - FUEL INICIAL: %f - CANTIDAD ELEMENTOS SOLUCION %ld\n", nivel_actual, node_candidato.id_interno, solucion[nivel_actual - 1].id_interno, solucion[nivel_actual].id_interno, distancias_nodo_actual_anterior[nivel_actual], fueles_actuales[nivel_actual], fueles_actuales[nivel_actual - 1], solucion.size());
+            if (solucion[nivel_actual].id_interno == 0)
+            {
+                cout << "WEA\n";
+                busqueda_terminada = true;
+                return;
+            }
+
+            gbj(vector_nodos, solucion, nivel_actual + 1, max_time, max_distance, speed, service_time, refuel_time, nivel_mayor_distancia, distancias_nodo_actual_anterior, tiempos_actuales, fueles_actuales, busqueda_terminada);
+            // printf("NIVEL %d - ELIMINADO ID: %d - DISTANCIA ENTRE NODOS[ANTERIOR-%d][ACTUAL-%d]: %f - FUEL ACTUAL: %f - FUEL INICIAL: %f\n", nivel_actual, node_candidato.id_interno, solucion[nivel_actual - 1].id_interno, solucion[nivel_actual].id_interno, distancias_nodo_actual_anterior[nivel_actual], fueles_actuales[nivel_actual], fueles_actuales[nivel_actual - 1]);
+            if (busqueda_terminada)
+            {
+                return;
+            }
+            node_candidato.en_solucion = false;
+            // solucion[nivel_actual] = node_vacio;
+            vector_nodos[node_candidato.id_interno].en_solucion = false;
+            if (nivel_actual > nivel_mayor_distancia)
+            {
+                return;
             }
         }
-        nivel_mayor_distancia = mayor(distancias_nodo_actual_anterior);
-        return;
     }
-    else
-    {
-        cout << "WEA\n";
+    // printf("NIVEL %d SIN NODOS - NIVEL MAYOR DISTANCIA %d\n", nivel_actual, nivel_mayor_distancia);
 
-        for (i_candidato = 0; i_candidato < vector_nodos.size(); i_candidato++)
-        {
-            node_candidato = vector_nodos[i_candidato];
-            double distancia_entre_nodo_nuevo_y_anterior = haversine(node_candidato.latitude, node_candidato.longitude, solucion[nivel_actual - 1].latitude, solucion[nivel_actual - 1].longitude);
-            if (node_candidato.tipo == "c")
-            {
-                aux_time = tiempos_actuales[nivel_actual - 1] + service_time + (distancia_entre_nodo_nuevo_y_anterior / speed);
-                aux_fuel = fueles_actuales[nivel_actual - 1] - distancia_entre_nodo_nuevo_y_anterior;
-            }
-            else
-            {
-                aux_time = tiempos_actuales[nivel_actual - 1] + refuel_time + (distancia_entre_nodo_nuevo_y_anterior / speed);
-                aux_fuel = max_distance;
-            }
-            aux_dist = distancias_nodo_actual_anterior[nivel_actual - 1] + distancia_entre_nodo_nuevo_y_anterior;
-
-            if (aux_fuel > 0 && aux_time <= max_time && !node_candidato.en_solucion)
-            {
-                tiempos_actuales[nivel_actual] = aux_time;
-
-                distancias_nodo_actual_anterior[nivel_actual] = distancia_entre_nodo_nuevo_y_anterior;
-                fueles_actuales[nivel_actual] = aux_fuel;
-                node_candidato.en_solucion = true;
-                solucion[nivel_actual] = node_candidato;
-                vector_nodos[node_candidato.id_interno].en_solucion = true;
-                if (solucion[nivel_actual].id_interno == 0)
-                {
-                    busqueda_terminada = true;
-                    return;
-                }
-
-                gbj(vector_nodos, solucion, nivel_actual + 1, max_time, max_distance, speed, service_time, refuel_time, nivel_mayor_distancia, distancias_nodo_actual_anterior, tiempos_actuales, fueles_actuales, busqueda_terminada);
-                node_candidato.en_solucion = false;
-                vector_nodos[node_candidato.id_interno].en_solucion = false;
-                distancias_nodo_actual_anterior[nivel_actual] = 0;
-                fueles_actuales[nivel_actual] = 0;
-                solucion[nivel_actual] = node_vacio;
-                if (nivel_actual > nivel_mayor_distancia)
-                {
-                    return;
-                }
-            }
-        }
-        nivel_mayor_distancia = mayor(distancias_nodo_actual_anterior);
-        return;
-    }
+    nivel_mayor_distancia = mayor(distancias_nodo_actual_anterior);
+    return;
 }
 /*
 nombre: main
@@ -383,6 +333,7 @@ int main()
 
     vector<int> nodos_utilizados;
     bool flag_nodos_visitados = true;
+    int id = 1;
     fstream file_out;
     file_out.open(name + ".out", std::ios_base::out);
     if (!file_out.is_open())
@@ -392,28 +343,34 @@ int main()
     }
     string ruta;
 
-    while (flag_nodos_visitados)
+    // while (flag_nodos_visitados)
+    // {
+    vector<node> route(total_nodos);
+    vector<double> distancias_nodo_actual_anterior(total_nodos);
+    vector<int> tiempos_actuales(total_nodos);
+    vector<double> fueles_actuales(total_nodos);
+    bool busqueda_terminada = false;
+    route[0] = nodes[0];
+
+    distancias_nodo_actual_anterior[0] = 0;
+    tiempos_actuales[0] = 0;
+    fueles_actuales[0] = max_distance;
+    int nivel_mayor_distancia = -1;
+
+    gbj(nodes, route, 1, max_time, max_distance, speed, service_time, refuel_time, nivel_mayor_distancia, distancias_nodo_actual_anterior, tiempos_actuales, fueles_actuales, busqueda_terminada);
+    route = cortar_nodos_inutiles(route);
+    for (auto node : route)
     {
-        vector<node> route(total_nodos);
-        vector<double> distancias_nodo_actual_anterior(total_nodos);
-        vector<int> tiempos_actuales(total_nodos);
-        vector<double> fueles_actuales(total_nodos);
-        bool busqueda_terminada = false;
-        route[0] = nodes[0];
-        distancias_nodo_actual_anterior[0] = 0;
-        tiempos_actuales[0] = 0;
-        fueles_actuales[0] = max_distance;
-        int nivel_mayor_distancia = -1;
-
-        gbj(nodes, route, 1, max_time, max_distance, speed, service_time, refuel_time, nivel_mayor_distancia, distancias_nodo_actual_anterior, tiempos_actuales, fueles_actuales, busqueda_terminada);
-        route = cortar_nodos_inutiles(route);
-        route.push_back(nodes[0]);
-        ruta = PrintVec(route);
-        file_out << ruta << endl;
-
-        if (!aun_quedan_customers_sin_visitar(route, nodes, num_customers, nodos_utilizados))
-        {
-            flag_nodos_visitados = false;
-        }
+        printf("%d%s - ", node.id_interno, node.tipo.c_str());
     }
+    cout << endl;
+    // route.push_back(nodes[0]);
+    ruta = PrintVec(route);
+    file_out << ruta << endl;
+    id++;
+    if (!aun_quedan_customers_sin_visitar(route, nodes, num_customers, nodos_utilizados))
+    {
+        flag_nodos_visitados = false;
+    }
+    // }
 }
