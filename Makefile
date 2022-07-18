@@ -1,6 +1,6 @@
 all: run
 run: main.cpp
-	g++ -o exe.o otro.cpp
+	g++ -o exe.o otro_test.cpp
 	./exe.o
 
 clean:

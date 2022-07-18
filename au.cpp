@@ -33,12 +33,16 @@ int main()
     // delay(5);
     // time_t after = time(nullptr);
     // cout << after - now << endl;
-    int i;
-    for (i = 0; i < 10; i++)
-    {
-        cout << "e" << endl;
-    }
-    cout << i << endl;
-
+    // int i;
+    // for (i = 0; i < 10; i++)
+    // {
+    //     cout << "e" << endl;
+    // }
+    // cout << i << endl;
+    unsigned t0, t1;
+    t0 = clock();
+    delay(20);
+    t1 = clock();
+    printf("T1 - T2 = %ld\n", (t1 - t0) / CLOCKS_PER_SEC);
     return 0;
 }

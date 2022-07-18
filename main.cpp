@@ -11,10 +11,10 @@
 #include <sys/time.h>
 #include <algorithm>
 #include <ctime>
+#include <chrono>
 using namespace std;
 
 #define _USE_MATH_DEFINES ;
-unsigned t0, t1;
 const int nodos = 100;
 class node
 {
@@ -27,7 +27,7 @@ public:
     bool en_solucion = false;
 };
 
-const double pi = 3.14159265358979323846264338327950288;
+const double pi = 3.1415926535;
 
 /*
 Nombre funcion: haversine
@@ -78,27 +78,64 @@ Input:
 - nodos_visitados: Input de tipo vector de enteros que contiene todos los nodos que han sido visitados
 Output: Retorna true si aun quedan nodos sin visitar, en caso contrario retorna false
 */
-bool aun_quedan_customers_sin_visitar(vector<node> &route, vector<node> &vector_nodos, int num_customers, vector<int> &nodos_visitados)
+bool aun_quedan_customers_sin_visitar(vector<node> &route, vector<node> &vector_nodos, int total_nodos, vector<int> &nodos_visitados)
 {
     bool flag = false;
     vector<node> aux;
-    for (int i = 0; i < route.size(); i++)
+    for (auto nodo : route)
     {
-        if (!existeEnVector(nodos_visitados, route[i].id_interno))
+        if (!existeEnVector(nodos_visitados, nodo.id_interno))
         {
-            nodos_visitados.push_back(route[i].id_interno);
+            nodos_visitados.push_back(nodo.id_interno);
         }
     }
     for (auto i_nodo : nodos_visitados)
     {
         vector_nodos[i_nodo].en_solucion = true;
     }
-    if (nodos_visitados.size() < num_customers)
+    if (nodos_visitados.size() < total_nodos)
     {
         return true;
     }
     return false;
 }
+/*
+Nombre funcion: nodo_en_solucion
+Descripcion: funcion que revisa si el nodo pasado como parametro se encuentra en el vector solucion ingresado.
+Input:
+- solucion: Vector de nodos que contiene los nodos ingresados hasta el momento que conforman una posible solucion
+- node_candidato: Nodo candidato que se busca revisar si es que ya esta ingresado en la solucion
+Output: Retorna true si el nodo ya esta en la solucion y false si no esta.
+*/
+bool nodo_en_solucion(vector<node> solucion, node node_candidato)
+{
+    vector<int> solucion_int;
+    for (auto node : solucion)
+    {
+        solucion_int.push_back(node.id_interno);
+    }
+    return existeEnVector(solucion_int, node_candidato.id_interno);
+}
+
+/*
+Nombre funcion: sumar_customers
+Descripcion: funcion suma la cantidad de customers en una ruta de nodos ingresada
+Input:
+- suma: Input de tipo entero que contiene la suma de las rutas anteriores ya ingresadas
+- route: Input de vector de nodos que contiene una ruta de la posible solucion
+Output: No retorna nada porque se trabaja con las direcciones de memoria
+*/
+void sumar_customers(int &suma, vector<node> route)
+{
+    for (auto nodo : route)
+    {
+        if (nodo.tipo == "c")
+        {
+            suma++;
+        }
+    }
+}
+
 /*
 Nombre funcion: mayor
 Descripcion: funcion que entrega el numero mayor dentro del vector dado
@@ -106,8 +143,14 @@ Input:
 - distancias: Input de tipo vector de double que contiene las distancias entre los nodos
 Output: Retorna la posicion de la mayor distancia entre nodos encontrada
 */
-int mayor(vector<double> distancias)
+int mayor(vector<node> ruta)
 {
+    vector<double> distancias(ruta.size());
+    for (size_t i = 0; i < ruta.size() - 1; i++)
+    {
+        distancias[i] = haversine(ruta[i].latitude, ruta[i].longitude, ruta[i + 1].longitude, ruta[i + 1].latitude);
+    }
+
     int may = distancias[0];
     int pos = 0;
     int x;
@@ -130,11 +173,17 @@ Output: Retorna un string con la informacion de los nodos dentro del vector
 */
 string PrintVec(const vector<node> &vec)
 {
-    string to_return = "", aux;
-    for (const auto &item : vec)
+    string to_return = "", aux, distancia_string, aux_2;
+    double distancia;
+    // for (size_t i = 0; i < vec.size() - 1; i++)
+    for (size_t i = 0; i < vec.size(); i++)
     {
-        aux = to_string(item.id_interno);
-        to_return += (" - " + aux + item.tipo);
+        aux = to_string(vec[i].id_interno);
+        aux_2 = to_string(vec[i + 1].id_interno);
+        distancia = haversine(vec[i].latitude, vec[i].longitude, vec[i + 1].latitude, vec[i + 1].longitude);
+        distancia_string = to_string(distancia);
+        to_return += (aux + vec[i].tipo + " - ");
+        // to_return += (aux + "|" + aux_2 + " " + distancia_string + " - ");
     }
     return to_return;
 }
@@ -189,11 +238,10 @@ Input:
 - inicio_id_interno: Input de tipo entero que contiene desde donde comienza un id a ingresar a los nodos
 Output: Retorna un vector de nodos que contiene nodos hasta la cantidad indicada en num
 */
-vector<node> create_nodes(ifstream &archivo, int num, int inicio_id_interno)
+void create_nodes(ifstream &archivo, int num, int inicio_id_interno, vector<node> &nodes)
 {
     string linea;
     vector<string> linea_aux;
-    vector<node> vector_aux;
     for (size_t i = 0; i < num; i++)
     {
         getline(archivo, linea);
@@ -205,10 +253,142 @@ vector<node> create_nodes(ifstream &archivo, int num, int inicio_id_interno)
         nodo_aux.tipo = linea_aux[1];
         nodo_aux.longitude = stof(linea_aux[2]);
         nodo_aux.latitude = stof(linea_aux[3]);
-        vector_aux.push_back(nodo_aux);
+        nodes.push_back(nodo_aux);
     }
-    return vector_aux;
 }
+
+/*
+Nombre funcion: distancia_total_ruta
+Descripcion: funcion que calcula la distancia total que recorre una ruta
+Input:
+- ruta: Input de tipo vector de nodos que contiene los nodos de la ruta recien generada
+Output: Retorna un valor de tipo double que contiene la distancia total recorrida por la ruta ingresada
+*/
+double distancia_total_ruta(vector<node> ruta)
+{
+    double distancia = 0;
+    for (size_t i = 0; i < ruta.size() - 1; i++)
+    {
+        distancia = distancia + haversine(ruta[i].latitude, ruta[i].longitude, ruta[i + 1].latitude, ruta[i + 1].longitude);
+    }
+    return distancia;
+}
+
+/*
+Nombre funcion: useless_route
+Descripcion: Funcion que revisa si una ruta ingresada contiene clientes visitados o no
+Input:
+- route: Input de tipo vector de nodos que contiene los nodos de la ruta recien generada
+Output: Retorna false si se encuentra un cliente visitado en route y true si es que no se encuentra
+*/
+bool useless_route(vector<node> route)
+{
+    for (auto nodo : route)
+    {
+        if (nodo.tipo == "c")
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+/*
+Nombre funcion: agregar_node_depot
+Descripcion: funcion que intenta agregar el nodo depot al final de una ruta generada por backtracking
+Input:
+- route: Input de tipo vector de nodos que contiene los nodos de una ruta
+- nodes: Es un vector de nodos que contiene todos los nodos disponibles
+- speed: varible de tipo double que representa la velocidad del vehiculo
+- max_distance: la distancia maxima que es posible recorrer sin pasar a una estacion de reabastecimiento
+- service_time: varible de tipo double que representa el tiempo que tarda en atender un cliente
+- refuel_time: varible de tipo double que representa el tiempo que tarda rellenar un estanque
+- max_time: tiempo maximo permitido por vehiculo
+Output:
+La funcion no tiene retorno, se trabaja con las direcciones de memoria
+ */
+void agregar_node_depot(vector<node> &route, vector<node> nodes, float speed, float max_distance, float service_time, float refuel_time, float max_time)
+{
+    vector<double> distancias, tiempos, fueles;
+    bool flag_help = true, flag_aux = false;
+    double distancia, distancia_node_depot, last_distance, distancia_last_node_nuevo_node, last_time, last_fuel, aux_time, aux_fuel, aux_dist;
+    node last_node, node_depot = nodes[0];
+    vector<node> return_nodes;
+    distancias.push_back(0);
+    tiempos.push_back(0);
+    fueles.push_back(max_distance);
+
+    for (size_t i = 1; i < route.size(); i++)
+    {
+        distancia = haversine(route[i - 1].latitude, route[i - 1].longitude, route[i].latitude, route[i].longitude);
+        distancias.push_back(distancia + distancias[i - 1]);
+        if (route[i].tipo == "c")
+        {
+            tiempos.push_back(tiempos[i - 1] + service_time + (distancia / speed));
+            fueles.push_back(fueles[i - 1] - distancia);
+        }
+        else
+        {
+            tiempos.push_back(tiempos[i - 1] + refuel_time + (distancia / speed));
+            fueles.push_back(max_distance);
+        }
+    }
+    last_distance = distancias.back();
+    last_fuel = fueles.back();
+    last_time = tiempos.back();
+    return_nodes.push_back(route.back());
+    while (flag_help)
+    {
+        for (auto &nodo : nodes)
+        {
+            nodo.en_solucion = false;
+        }
+        last_node = return_nodes.back();
+        if (last_node.id_interno == 0)
+        {
+            return;
+        }
+        distancia_node_depot = haversine(last_node.latitude, last_node.longitude, node_depot.latitude, node_depot.longitude);
+        if ((last_fuel - distancia_node_depot) >= 0)
+        {
+            route.push_back(node_depot);
+            flag_help = false;
+            break;
+        }
+        for (auto nodo : nodes)
+        {
+            if (nodo.id_interno != 0 && nodo.tipo == "f")
+            {
+                distancia_last_node_nuevo_node = haversine(last_node.latitude, last_node.longitude, nodo.latitude, nodo.longitude);
+                aux_time = last_time + refuel_time + (distancia_last_node_nuevo_node / speed);
+                aux_dist = last_distance + distancia_last_node_nuevo_node;
+                aux_fuel = last_fuel - distancia_last_node_nuevo_node;
+                if (aux_fuel >= 0 && aux_time <= max_time && !nodes[nodo.id_interno].en_solucion)
+                {
+                    aux_fuel = max_distance;
+                    route.push_back(nodo);
+                    return_nodes.push_back(nodo);
+                    nodes[nodo.id_interno].en_solucion = true;
+
+                    last_distance = aux_dist;
+                    last_fuel = aux_fuel;
+                    last_time = aux_time;
+                    flag_aux = false;
+                    break;
+                }
+                else
+                {
+                    flag_aux = true;
+                }
+            }
+        }
+        if (flag_aux)
+        {
+            break;
+        }
+    }
+}
+
 /*
 Nombre funcion: gbj
 Descripcion: funcion que realiza backtracking recursivo para encontrar una ruta del problema
@@ -222,53 +402,77 @@ Input:
 - service_time: varible de tipo double que representa el tiempo que tarda en atender un cliente
 - refuel_time: varible de tipo double que representa el tiempo que tarda rellenar un estanque
 - nivel_mayor_distancia: entero que contiene el nivel donde se tiene la mayor distancia entre nodos
-- distancia_nodo_actual_anterior: Vector de tipo double que contiene la informacion de las distancias entre nodos de todos los niveles
+- distancia_actual: Vector de tipo double que contiene la informacion de las distancias entre nodos de todos los niveles
 - tiempo_actuales: Vector de tipo entero que contiene el tiempo acumulado en cada nivel del arbol de busqueda
 - fueles_actuales: Vector de tipo entero que contiene la cantidad de combustible en cada nivel del arbol de busqueda
 Output:
 La funcion no tiene retorno, se trabaja con las direcciones de memoria
  */
-void gbj(vector<node> &vector_nodos, vector<node> &solucion, int nivel_actual, float max_time, float max_distance, float speed, float service_time, float refuel_time, int &nivel_mayor_distancia, vector<double> &distancias_nodo_actual_anterior, vector<int> &tiempos_actuales, vector<double> &fueles_actuales)
+void gbj(vector<node> &vector_nodos, vector<node> &solucion, int nivel_actual, float max_time, float max_distance, float speed, float service_time, float refuel_time, int &nivel_mayor_distancia, double &distancia_actual, int tiempo_actual, double fuel_actual, std::chrono::_V2::system_clock::time_point &t0)
 {
+    double fuel_inicial = fuel_actual;
+    auto t1 = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> float_ms = t1 - t0;
+    double duracion_algoritmo = (float_ms.count()) / 1000;
+    if (duracion_algoritmo == 300)
+    {
+        return;
+    }
 
     int aux_time, aux_fuel, aux_dist, i_candidato;
-    vector_nodos[0].en_solucion = true;
+
+    node node_candidato;
 
     for (i_candidato = vector_nodos.size(); i_candidato > 0; i_candidato--)
     {
-        double distancia_entre_nodo_nuevo_y_anterior = haversine(vector_nodos[i_candidato].latitude, vector_nodos[i_candidato].longitude, solucion[nivel_actual - 1].latitude, solucion[nivel_actual - 1].longitude);
-        if (vector_nodos[i_candidato].tipo == "c")
+        node_candidato = vector_nodos[i_candidato];
+        if (nodo_en_solucion(solucion, node_candidato))
         {
-            aux_time = tiempos_actuales[nivel_actual - 1] + service_time + (distancia_entre_nodo_nuevo_y_anterior / speed);
-            aux_fuel = fueles_actuales[nivel_actual - 1] - distancia_entre_nodo_nuevo_y_anterior;
+            node_candidato.en_solucion = true;
+        }
+        double distancia_entre_nodo_nuevo_y_anterior = haversine(node_candidato.latitude, node_candidato.longitude, solucion[nivel_actual - 1].latitude, solucion[nivel_actual - 1].longitude);
+        if (node_candidato.tipo == "c")
+        {
+            aux_time = tiempo_actual + service_time + (distancia_entre_nodo_nuevo_y_anterior / speed);
+            aux_fuel = fuel_actual - distancia_entre_nodo_nuevo_y_anterior;
         }
         else
         {
-            aux_time = tiempos_actuales[nivel_actual - 1] + refuel_time + (distancia_entre_nodo_nuevo_y_anterior / speed);
-            aux_fuel = max_distance;
+            aux_time = tiempo_actual + refuel_time + (distancia_entre_nodo_nuevo_y_anterior / speed);
+            aux_fuel = fuel_actual - distancia_entre_nodo_nuevo_y_anterior;
         }
-        aux_dist = distancias_nodo_actual_anterior[nivel_actual - 1] + distancia_entre_nodo_nuevo_y_anterior;
+        aux_dist = distancia_actual + distancia_entre_nodo_nuevo_y_anterior;
 
-        if (aux_fuel > 0 && aux_time <= 3 * max_time / 5 && !vector_nodos[i_candidato].en_solucion)
+        if (aux_fuel > 0 && aux_time <= 4 * max_time / 6 && !node_candidato.en_solucion)
         {
-            tiempos_actuales[nivel_actual] = aux_time;
+            if (node_candidato.tipo == "f")
+            {
+                aux_fuel = max_distance;
+            }
+            tiempo_actual = aux_time;
 
-            distancias_nodo_actual_anterior[nivel_actual] = distancia_entre_nodo_nuevo_y_anterior;
-            fueles_actuales[nivel_actual] = aux_fuel;
-            vector_nodos[i_candidato].en_solucion = true;
-            solucion[nivel_actual] = vector_nodos[i_candidato];
-            vector_nodos[vector_nodos[i_candidato].id_interno].en_solucion = true;
-            gbj(vector_nodos, solucion, nivel_actual + 1, max_time, max_distance, speed, service_time, refuel_time, nivel_mayor_distancia, distancias_nodo_actual_anterior, tiempos_actuales, fueles_actuales);
-            vector_nodos[i_candidato].en_solucion = false;
-
-            vector_nodos[vector_nodos[i_candidato].id_interno].en_solucion = false;
+            distancia_actual = distancia_entre_nodo_nuevo_y_anterior;
+            fuel_actual = aux_fuel;
+            node_candidato.en_solucion = true;
+            solucion[nivel_actual] = node_candidato;
+            vector_nodos[node_candidato.id_interno].en_solucion = true;
+            gbj(vector_nodos, solucion, nivel_actual + 1, max_time, max_distance, speed, service_time, refuel_time, nivel_mayor_distancia, distancia_actual, tiempo_actual, fuel_actual, t0);
+            t1 = std::chrono::high_resolution_clock::now();
+            float_ms = t1 - t0;
+            duracion_algoritmo = (float_ms.count()) / 1000;
+            if (duracion_algoritmo == 300)
+            {
+                return;
+            }
+            vector_nodos[node_candidato.id_interno].en_solucion = false;
             if (nivel_actual > nivel_mayor_distancia)
             {
                 return;
             }
         }
     }
-    nivel_mayor_distancia = mayor(distancias_nodo_actual_anterior);
+
+    nivel_mayor_distancia = mayor(solucion);
     return;
 }
 /*
@@ -283,51 +487,36 @@ int main()
     string archivo;
     cout << "Ingrese nombre del archivo (con .dat)\n";
     cin >> archivo;
-    ifstream archivo_leido(archivo);
+    ifstream archivo_leido("instancias/" + archivo);
     string linea;
-    string linea_inicial;
-    string linea_depot;
 
     int id_nodos = 0;
-    getline(archivo_leido, linea_inicial);
-    getline(archivo_leido, linea_depot);
-    vector<string> linea_ini = string_to_vector(linea_inicial);
-    string name = linea_ini[0];
-    float num_customers = stof(linea_ini[1]);
-    float num_afs = stof(linea_ini[2]);
-    float max_time = stof(linea_ini[3]);
-    float max_distance = stof(linea_ini[4]);
-    float speed = stof(linea_ini[5]);
-    float service_time = stof(linea_ini[6]);
-    float refuel_time = stof(linea_ini[7]);
-    vector<string> linea_depi = string_to_vector(linea_depot);
+    getline(archivo_leido, linea);
+    vector<string> linea_vec = string_to_vector(linea);
+    string name = linea_vec[0];
+    float num_customers = stof(linea_vec[1]);
+    float num_afs = stof(linea_vec[2]);
+    float max_time = stof(linea_vec[3]);
+    float max_distance = stof(linea_vec[4]);
+    float speed = stof(linea_vec[5]);
+    float service_time = stof(linea_vec[6]);
+    float refuel_time = stof(linea_vec[7]);
+    getline(archivo_leido, linea);
+    linea_vec = string_to_vector(linea);
     node node_depot;
     node_depot.id_interno = id_nodos;
+    node_depot.id = stof(linea_vec[0]);
+    node_depot.tipo = linea_vec[1];
+    node_depot.longitude = stof(linea_vec[2]);
+    node_depot.latitude = stof(linea_vec[3]);
     id_nodos++;
-    node_depot.id = stof(linea_depi[0]);
-    node_depot.tipo = linea_depi[1];
-    node_depot.longitude = stof(linea_depi[2]);
-    node_depot.latitude = stof(linea_depi[3]);
-    getline(archivo_leido, linea);
-    vector<node> nodes_afs = create_nodes(archivo_leido, num_afs - 1, id_nodos);
-
-    vector<node> nodes_customer = create_nodes(archivo_leido, num_customers, id_nodos + 21);
-    int total_nodos = num_afs - 1 + num_customers;
-    vector<node> vector_nodos;
-    vector_nodos.push_back(node_depot);
-
-    for (auto node : nodes_afs)
-    {
-        vector_nodos.push_back(node);
-    }
-    for (auto node : nodes_customer)
-    {
-        vector_nodos.push_back(node);
-    }
+    vector<node> nodes;
+    nodes.push_back(node_depot);
+    int total_nodos = num_afs + num_customers;
+    create_nodes(archivo_leido, total_nodos, id_nodos, nodes);
 
     vector<int> nodos_utilizados;
     bool flag_nodos_visitados = true;
-    int id = 1;
     fstream file_out;
     file_out.open(name + ".out", std::ios_base::out);
     if (!file_out.is_open())
@@ -336,30 +525,54 @@ int main()
         return 0;
     }
     string ruta;
-
+    double total_distancia_recorrida = 0;
+    int suma_customers = 0, num_vehiculos = 0;
+    vector<vector<node>> all_routes;
+    auto start = std::chrono::high_resolution_clock::now();
     while (flag_nodos_visitados)
     {
         vector<node> route(total_nodos);
-        vector<double> distancias_nodo_actual_anterior(total_nodos);
-        vector<int> tiempos_actuales(total_nodos);
-        vector<double> fueles_actuales(total_nodos);
-        route[0] = vector_nodos[0];
-        route[0].en_solucion = true;
-        distancias_nodo_actual_anterior[0] = 0;
-        tiempos_actuales[0] = 0;
-        fueles_actuales[0] = max_distance;
-        vector_nodos[0].en_solucion = true;
-        int nivel_mayor_distancia = -1;
+        double distancia_actual = 0;
+        int tiempo_actual = 0;
+        double fuel_actual = max_distance;
+        bool busqueda_terminada = false;
+        route[0] = nodes[0];
 
-        gbj(vector_nodos, route, 1, max_time, max_distance, speed, service_time, refuel_time, nivel_mayor_distancia, distancias_nodo_actual_anterior, tiempos_actuales, fueles_actuales);
+        int nivel_mayor_distancia = -1;
+        auto t0 = std::chrono::high_resolution_clock::now();
+        gbj(nodes, route, 1, max_time, max_distance, speed, service_time, refuel_time, nivel_mayor_distancia, distancia_actual, tiempo_actual, fuel_actual, t0);
+        auto t1 = std::chrono::high_resolution_clock::now();
         route = cortar_nodos_inutiles(route);
-        route.push_back(vector_nodos[0]);
-        ruta = PrintVec(route);
-        file_out << ruta << endl;
-        id++;
-        if (!aun_quedan_customers_sin_visitar(route, vector_nodos, total_nodos - 1, nodos_utilizados))
+        agregar_node_depot(route, nodes, speed, max_distance, service_time, refuel_time, max_time);
+        if (route.back().id_interno != 0)
+            route.push_back(nodes[0]);
+        if (route.size() == 1)
+        {
+            break;
+        }
+        all_routes.push_back(route);
+        if (!aun_quedan_customers_sin_visitar(route, nodes, total_nodos, nodos_utilizados))
         {
             flag_nodos_visitados = false;
         }
     }
+    for (auto route : all_routes)
+    {
+        if (!useless_route(route))
+        {
+            ruta = PrintVec(route);
+            file_out << ruta + "Distancia recorrida: " << distancia_total_ruta(route) << endl;
+            total_distancia_recorrida = total_distancia_recorrida + distancia_total_ruta(route);
+            sumar_customers(suma_customers, route);
+            num_vehiculos++;
+        }
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> float_ms = end - start;
+    double duracion_algoritmo = (float_ms.count()) / 1000;
+    file_out << "Distancia total recorrida: " << total_distancia_recorrida << endl;
+    file_out << "Total customers visitados: " << suma_customers << endl;
+    file_out << "Total vehiculos utilizados: " << num_vehiculos << endl;
+    file_out << "Tiempo de ejecucion: " << duracion_algoritmo << endl;
 }

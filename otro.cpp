@@ -86,10 +86,10 @@ bool aun_quedan_customers_sin_visitar(vector<node> &route, vector<node> &vector_
     {
         if (!existeEnVector(nodos_visitados, route[i].id_interno))
         {
-            if (route[i].tipo == "c")
-            {
-                nodos_visitados.push_back(route[i].id_interno);
-            }
+            // if (route[i].tipo == "c")
+            // {
+            nodos_visitados.push_back(route[i].id_interno);
+            // }
         }
     }
     for (auto i_nodo : nodos_visitados)
@@ -229,9 +229,14 @@ Input:
 Output:
 La funcion no tiene retorno, se trabaja con las direcciones de memoria
  */
-void gbj(vector<node> &vector_nodos, vector<node> &solucion, int nivel_actual, float max_time, float max_distance, float speed, float service_time, float refuel_time, int &nivel_mayor_distancia, vector<double> &distancias_nodo_actual_anterior, vector<int> &tiempos_actuales, vector<double> &fueles_actuales, bool &busqueda_terminada)
+void gbj(vector<node> &vector_nodos, vector<node> &solucion, int nivel_actual, float max_time, float max_distance, float speed, float service_time, float refuel_time, int &nivel_mayor_distancia, vector<double> &distancias_nodo_actual_anterior, vector<int> &tiempos_actuales, vector<double> &fueles_actuales, bool &busqueda_terminada, unsigned &t0)
 {
-    // printf("NIVEL ACTUAL %d - FUEL ACTUAL %f - TIEMPO ACTUAL %d\n", nivel_actual, fueles_actuales[nivel_actual - 1], tiempos_actuales[nivel_actual - 1]);
+    printf("NIVEL ACTUAL %d - FUEL ACTUAL %f - TIEMPO ACTUAL %d\n", nivel_actual, fueles_actuales[nivel_actual - 1], tiempos_actuales[nivel_actual - 1]);
+    t1 = clock();
+    if (((t1 - t0) / CLOCKS_PER_SEC) == 60)
+    {
+        return;
+    }
 
     int aux_time, aux_fuel, aux_dist, i_candidato;
 
@@ -241,6 +246,7 @@ void gbj(vector<node> &vector_nodos, vector<node> &solucion, int nivel_actual, f
     {
         node_candidato = vector_nodos[i_candidato];
         double distancia_entre_nodo_nuevo_y_anterior = haversine(node_candidato.latitude, node_candidato.longitude, solucion[nivel_actual - 1].latitude, solucion[nivel_actual - 1].longitude);
+        printf("DISTANCIA_ENTRE_NODO_NUEVO_Y_ANTERIOR %f\n", distancia_entre_nodo_nuevo_y_anterior);
         if (node_candidato.tipo == "c")
         {
             aux_time = tiempos_actuales[nivel_actual - 1] + service_time + (distancia_entre_nodo_nuevo_y_anterior / speed);
@@ -253,7 +259,7 @@ void gbj(vector<node> &vector_nodos, vector<node> &solucion, int nivel_actual, f
         }
         aux_dist = distancias_nodo_actual_anterior[nivel_actual - 1] + distancia_entre_nodo_nuevo_y_anterior;
 
-        if (aux_fuel > 0 && aux_time <= max_time && !node_candidato.en_solucion)
+        if (aux_fuel > 0 && aux_time <= 4 * max_time / 6 && !node_candidato.en_solucion)
         {
             tiempos_actuales[nivel_actual] = aux_time;
 
@@ -262,22 +268,23 @@ void gbj(vector<node> &vector_nodos, vector<node> &solucion, int nivel_actual, f
             node_candidato.en_solucion = true;
             solucion[nivel_actual] = node_candidato;
             vector_nodos[node_candidato.id_interno].en_solucion = true;
-            // printf("NIVEL %d - AGREGADO ID: %d - DISTANCIA ENTRE NODOS[ANTERIOR-%d][ACTUAL-%d]: %f - FUEL ACTUAL: %f - FUEL INICIAL: %f - CANTIDAD ELEMENTOS SOLUCION %ld\n", nivel_actual, node_candidato.id_interno, solucion[nivel_actual - 1].id_interno, solucion[nivel_actual].id_interno, distancias_nodo_actual_anterior[nivel_actual], fueles_actuales[nivel_actual], fueles_actuales[nivel_actual - 1], solucion.size());
+            printf("NIVEL %d - AGREGADO ID: %d - DISTANCIA ENTRE NODOS[ANTERIOR-%d][ACTUAL-%d]: %f - FUEL ACTUAL: %f - FUEL INICIAL: %f - CANTIDAD ELEMENTOS SOLUCION %ld\n", nivel_actual, node_candidato.id_interno, solucion[nivel_actual - 1].id_interno, solucion[nivel_actual].id_interno, distancias_nodo_actual_anterior[nivel_actual], fueles_actuales[nivel_actual], fueles_actuales[nivel_actual - 1], solucion.size());
             if (solucion[nivel_actual].id_interno == 0)
             {
-                cout << "WEA\n";
                 busqueda_terminada = true;
                 return;
             }
-
-            gbj(vector_nodos, solucion, nivel_actual + 1, max_time, max_distance, speed, service_time, refuel_time, nivel_mayor_distancia, distancias_nodo_actual_anterior, tiempos_actuales, fueles_actuales, busqueda_terminada);
+            gbj(vector_nodos, solucion, nivel_actual + 1, max_time, max_distance, speed, service_time, refuel_time, nivel_mayor_distancia, distancias_nodo_actual_anterior, tiempos_actuales, fueles_actuales, busqueda_terminada, t0);
             // printf("NIVEL %d - ELIMINADO ID: %d - DISTANCIA ENTRE NODOS[ANTERIOR-%d][ACTUAL-%d]: %f - FUEL ACTUAL: %f - FUEL INICIAL: %f\n", nivel_actual, node_candidato.id_interno, solucion[nivel_actual - 1].id_interno, solucion[nivel_actual].id_interno, distancias_nodo_actual_anterior[nivel_actual], fueles_actuales[nivel_actual], fueles_actuales[nivel_actual - 1]);
+            t1 = clock();
+            if (((t1 - t0) / CLOCKS_PER_SEC) == 60)
+            {
+                return;
+            }
             if (busqueda_terminada)
             {
                 return;
             }
-            node_candidato.en_solucion = false;
-            // solucion[nivel_actual] = node_vacio;
             vector_nodos[node_candidato.id_interno].en_solucion = false;
             if (nivel_actual > nivel_mayor_distancia)
             {
@@ -356,8 +363,9 @@ int main()
     tiempos_actuales[0] = 0;
     fueles_actuales[0] = max_distance;
     int nivel_mayor_distancia = -1;
-
-    gbj(nodes, route, 1, max_time, max_distance, speed, service_time, refuel_time, nivel_mayor_distancia, distancias_nodo_actual_anterior, tiempos_actuales, fueles_actuales, busqueda_terminada);
+    t0 = clock();
+    gbj(nodes, route, 1, max_time, max_distance, speed, service_time, refuel_time, nivel_mayor_distancia, distancias_nodo_actual_anterior, tiempos_actuales, fueles_actuales, busqueda_terminada, t0);
+    t1 = clock();
     route = cortar_nodos_inutiles(route);
     for (auto node : route)
     {
