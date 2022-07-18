@@ -8,3 +8,5 @@ Para ejecutar el codigo se utiliza el Makefile creado
 Con make, se compila y ejecuta el codigo
 
 Con make clean, se limpian los archivos compilados
+
+Los nombres de las instancias ingresadas por consola asumen que estas estan en una carpeta llamada "Instancias"
